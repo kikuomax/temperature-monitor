@@ -6,7 +6,7 @@ Remarks,
 
 ## Getting a Raspberry Pi Zero W Connected via WiFi without a Monitor
 
-I have done OS image installation on OSX.
+I did OS image installation on OSX.
 
 [This page](https://www.raspberrypi.org/documentation/installation/installing-images/mac.md) explains basic operations for making an OS image on OSX.
 
@@ -30,7 +30,7 @@ By the way, I live in Japan, so I replaced `country=US` with `country=JP`.
 
 ## Wiring DHT22 and Raspberry Pi Zero W
 
-The [GPIO layout](https://www.raspberrypi.org/documentation/usage/gpio/) for reference.
+The [GPIO layout](https://www.raspberrypi.org/documentation/usage/gpio/) for your reference.
 
 I followed the wiring instruction on [this page](https://www.hackster.io/adamgarbo/raspberry-pi-2-iot-thingspeak-dht22-sensor-b208f4).
 
