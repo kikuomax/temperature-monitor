@@ -425,3 +425,161 @@ I ran the following command to subscribe MQTT messages,
 ```
 mosquitto_sub -h Pittsburgh.local -p 8883 -t monitor/temperature-and-humidity --cafile root-ca.crt --cert mqtt-subscriber-1.crt --key mqtt-subscriber-1.key
 ```
+
+## AWS IoT
+
+- Somehow publish messages to AWS IoT
+- Somehow subscribe messages from AWS IoT on a browser
+
+Hints
+- [MQTT over WebSocket](https://docs.aws.amazon.com/iot/latest/developerguide/protocols.html)
+    - [AWS Signature Version 4](https://docs.aws.amazon.com/general/latest/gr//sigv4_signing.html)
+
+First, replace the MQTT broker with the equivalent of AWS (Message broker).
+
+### Creating things
+
+To access the AWS message broker, you have to [create a thing](https://docs.aws.amazon.com/iot/latest/developerguide/register-device.html) first.
+
+#### Creating a thing representing the Raspberry Pi
+
+I took the following steps,
+
+1. Create a thing (`temperature-sensor-1`)
+
+2. Create certificates for `temperature-sensor-1`
+
+    1. Download the following files
+        - `XYZ-certificate.pem.crt`
+        - `XYZ-private.pem.crt`
+        - The root CA certificate issued by Symantec
+    2. Copy the above files to my Raspberry Pi
+
+3. Create a policy `temperature-sensor` similar to the following,
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": "iot:Connect",
+          "Resource": "arn:aws:iot:ap-northeast-1:AWS-ACCOUNT-ID:client/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "iot:Publish",
+          "Resource": "arn:aws:iot:ap-northeast-1:AWS-ACCOUNT-ID:topic/home/temperature-and-humidity"
+        }
+      ]
+    }
+    ```
+
+4. Attach the policy `temperature-sensor` to the thing `temperature-sensor-1`
+
+#### Creating a thing representing a subscriber
+
+I took the following steps,
+
+1. Create a thing (`home-monitor`)
+
+2. Create certificates for `home-monitor`
+
+    Download the following files,
+    - `XYZ-certificate.pem.crt`
+    - `XYZ-private.pem.crt`
+    - The root CA certificate issued by Symantec (NOTE: the same as that downloaded in the previous subsubsection)
+
+3. Create a policy `home-monitor` similar to the following,
+    ```json
+    {
+      "Version": "2012-10-17",
+      "Statement": [
+        {
+          "Effect": "Allow",
+          "Action": "iot:Connect",
+          "Resource": "arn:aws:iot:ap-northeast-1:AWS-ACCOUNT-ID:client/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "iot:Receive",
+          "Resource": "arn:aws:iot:ap-northeast-1:AWS-ACCOUNT-ID:topic/home/*"
+        },
+        {
+          "Effect": "Allow",
+          "Action": "iot:Subscribe",
+          "Resource": "arn:aws:iot:ap-northeast-1:AWS-ACCOUNT-ID:topicfilter/home/*"
+        }
+      ]
+    }
+    ```
+
+4. Attach the policy `home-monitor` to the thing `home-monitor`
+
+**NOTE: I could not subscribe the topic `home/temperature-and-humidity` without `iot:Receive` allowed.**
+
+### Publishing messages to the AWS message broker
+
+Because I already introduced an MQTT broker in the previous section, it was very straight forward to publish messages to the AWS message broker.
+
+I added the following changes to [`src/DHT22_mqtt_crt_both.py`](src/DHT22_mqtt_crt_both.py) and saved it as [`src/DHT22_aws_iot.py`](src/DHT22_aws_iot.py).
+
+- Configurations
+  ```python
+  import os
+  mqtt_host_name = os.environ['MQTT_HOST_NAME']
+  mqtt_port = 8883
+  topic_to_publish = 'home/temperature-and-humidity'
+  ```
+
+- TLS parameters for the AWS message broker
+  ```python
+  mqtt_client.tls_set(
+      ca_certs='/home/pi/projects/temperature-monitor/aws-iot/root-ca.pem',
+      certfile='/home/pi/projects/temperature-monitor/aws-iot/mqtt-sensor-1.pem.crt',
+      keyfile='/home/pi/projects/temperature-monitor/aws-iot/mqtt-sensor-1.private.key',
+      cert_reqs=ssl.CERT_REQUIRED,
+      tls_version=ssl.PROTOCOL_TLSv1_2)
+  ```
+
+- Connection using the configurations
+  ```python
+  mqtt_client.connect(mqtt_host_name, port=mqtt_port, keepalive=60)
+  ```
+
+You may have noticed that the host name has to be specified to the environment variable `MQTT_HOST_NAME`.
+
+To get my AWS message broker name ([endpoint](https://docs.aws.amazon.com/cli/latest/reference/iot/describe-endpoint.html)), I ran the following command (`--profile kikuo-jp` is supplied to provide my credential),
+
+```shell
+aws iot --profile kikuo-jp describe-endpoint
+```
+
+And I got results similar to the following,
+
+```json
+{
+    "endpointAddress": "XYZ.iot.ap-northeast-1.amazonaws.com"
+}
+```
+
+I set the `MQTT_HOST_NAME` environment variable to `XYZ.iot.ap-northeast-1.amazonaws.com`.
+
+```shell
+export MQTT_HOST_NAME=XYZ.iot.ap-northeast-1.amazonaws.com
+```
+
+Then I ran [`src/DHT22_aws_iot.py`](src/DHT22_aws_iot.py)
+
+```shell
+python src/DHT22_aws_iot.py
+```
+
+### Subscribing messages from the AWS message broker
+
+To subscribe messages from the AWS message broker, I just replaced certificates of the previous `mosquitto_sub` command with those for the AWS message broker (see below).
+
+```shell
+mosquitto_sub -h $MQTT_HOST_NAME -p 8883 -t 'home/temperature-and-humidity' --cafile root-ca.pem --cert mqtt-subscriber-1.pem.crt --key mqtt-subscriber-1.private.key
+```
+
+As I mentioned above, I had to allow the thing `home-monitor` the action `iot:Receive` in addition to the actions `iot:Connect` and `iot:Subscribe`.
