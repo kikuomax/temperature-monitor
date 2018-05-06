@@ -625,3 +625,7 @@ I got a `SecurityError` telling me "The operation is insecure" when Eclipse Paho
 
 I followed a workaround suggested [here](https://forums.developer.apple.com/thread/87778), turning off the local file restriction of Safari, and I could avoid the error.
 NOTE: I had to reload the page after turning off the local file restriction feature.
+
+### GitHub Pages
+
+The contents of [`docs`](docs) are now hosted at the [GitHub Pages](https://kikuomax.github.io/temperature-monitor/) (no MQTT endpoint and credentials are supplied).
