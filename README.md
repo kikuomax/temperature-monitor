@@ -542,6 +542,27 @@ I added the following changes to [`src/DHT22_mqtt_crt_both.py`](src/DHT22_mqtt_c
   mqtt_client.connect(mqtt_host_name, port=mqtt_port, keepalive=60)
   ```
 
+- JSON support
+  ```python
+  import json
+  ```
+
+- Publishing JSON message
+  ```python
+  payload = {
+      'datetime': time.strftime('%Y-%m-%d %H:%M:%S'),
+      'temperature': s.temperature(),
+      'humidity': s.humidity(),
+      'staleness': s.staleness(),
+      'bad_checksum': s.bad_checksum(),
+      'short_message': s.short_message(),
+      'missing_message': s.missing_message(),
+      'sensor_resets': s.sensor_resets()
+  }
+  message_info = mqtt_client.publish(
+     topic_to_publish, json.dumps(payload), qos=0)
+  ```
+
 You may have noticed that the host name has to be specified to the environment variable `MQTT_HOST_NAME`.
 
 To get my AWS Message Broker name ([endpoint](https://docs.aws.amazon.com/cli/latest/reference/iot/describe-endpoint.html)), I ran the following command (`--profile kikuo-jp` is supplied to provide my credential),
