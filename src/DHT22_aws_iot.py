@@ -269,6 +269,8 @@ if __name__ == "__main__":
 
    import DHT22
 
+   import json
+
    # Intervals of about 2 seconds or less will eventually hang the DHT22.
    INTERVAL=3
 
@@ -288,11 +290,18 @@ if __name__ == "__main__":
 
       time.sleep(0.2)
 
-      payload = "{} {} {} {:3.2f} {} {} {} {}".format(
-         r, s.humidity(), s.temperature(), s.staleness(),
-         s.bad_checksum(), s.short_message(), s.missing_message(),
-         s.sensor_resets())
-      message_info = mqtt_client.publish(topic_to_publish, payload, qos=0)
+      payload = {
+         'datetime': time.strftime('%Y-%m-%d %H:%M:%S'),
+         'temperature': s.temperature(),
+         'humidity': s.humidity(),
+         'staleness': s.staleness(),
+         'bad_checksum': s.bad_checksum(),
+         'short_message': s.short_message(),
+         'missing_message': s.missing_message(),
+         'sensor_resets': s.sensor_resets()
+      }
+      message_info = mqtt_client.publish(
+         topic_to_publish, json.dumps(payload), qos=0)
       print('rc: {}'.format(message_info.rc))
       print(payload)
 

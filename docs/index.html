@@ -4,6 +4,11 @@
     <meta charset='UTF-8'>
     <title>MQTT over WebSocket</title>
     <link rel='stylesheet' type='text/css' href='assets/css/bootstrap.min.css'>
+    <style>
+      .monitor-display {
+        font-size: x-large;
+      }
+    </style>
     <script src='assets/js/jquery-3.3.1.min.js'></script>
     <script src='assets/js/popper.min.js'></script>
     <script src='assets/js/bootstrap.min.js'></script>
@@ -21,7 +26,9 @@
             awsAccessKeyId: '',
             awsSecretAccessKey: '',
             awsRegion: '',
-            lastMessage: 'not yet subscribed'
+            lastDatetime: '',
+            lastTemperature: 0,
+            lastHumidity: 0
           },
           methods: {
             connectToMQTTBroker: function () {
@@ -89,7 +96,10 @@
               }
 
               function handleMessage(message) {
-                self.lastMessage = message.payloadString;
+                const payload = JSON.parse(message.payloadString);
+                self.lastDatetime = payload.datetime;
+                self.lastTemperature = payload.temperature;
+                self.lastHumidity = payload.humidity;
               }
             }
           }
@@ -100,7 +110,13 @@
   <body>
     <div id='main' class='container'>
       <h1>MQTT over WebSocket</h1>
+      <div class='monitor-display'>
+        <p>Temperature: {{ lastTemperature.toFixed(1) }}&#x00B0;</p>
+        <p>Humidity: {{ lastHumidity.toFixed(1) }}%</p>
+        <p>at {{ lastDatetime }}</p>
+      </div>
       <form v-on:submit.prevent='connectToMQTTBroker'>
+        <h2>AWS Message Broker Subscription</h2>
         <div class='form-group'>
           <label for='mqtt-endpoint'>MQTT Endpoint</label>
           <input
@@ -137,11 +153,8 @@
               v-model='awsRegion'
               placeholder='Enter AWS Region'>
         </div>
-        <input type='submit' class='btn btn-primary'>
+        <input type='submit' class='btn btn-primary' value='Subscribe'>
       </form>
-      <div>
-        <p>Last Message: {{ lastMessage }}</p>
-      </div>
     </div>
   </body>
 </html>
