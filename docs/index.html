@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='UTF-8'>
+    <title>MQTT over WebSocket</title>
+    <link rel='stylesheet' type='text/css' href='assets/css/bootstrap.min.css'>
+    <script src='assets/js/jquery-3.3.1.min.js'></script>
+    <script src='assets/js/popper.min.js'></script>
+    <script src='assets/js/bootstrap.min.js'></script>
+    <script src='assets/js/vue-2.5.16.min.js'></script>
+    <script src='assets/js/paho-mqtt-min.js'></script>
+    <script src='assets/js/aws-sdk-2.233.1.min.js'></script>
+    <script src='assets/js/SigV4Utils.js'></script>
+    <script>
+      $(function () {
+        const model = new Vue({
+          el: '#main',
+          data: {
+            topic: 'home/temperature-and-humidity',
+            mqttEndpoint: '',
+            awsAccessKeyId: '',
+            awsSecretAccessKey: '',
+            awsRegion: '',
+            lastMessage: 'not yet subscribed'
+          },
+          methods: {
+            connectToMQTTBroker: function () {
+              const self = this;
+              // https://docs.aws.amazon.com/iot/latest/developerguide/protocols.html
+              // creates a canonical request
+              const datetime = AWS.util.date.iso8601(new Date()).replace(/[:\-]|\.\d{3}/g, '');
+              const date = datetime.substr(0, 8);
+
+              const method = 'GET';
+              const protocol = 'wss';
+              const uri = '/mqtt';
+              const service = 'iotdevicegateway';
+              const algorithm = 'AWS4-HMAC-SHA256';
+              const credentialScope = date + '/' + this.awsRegion + '/' + service + '/' + 'aws4_request';
+              const canonicalQuerystring = 'X-Amz-Algorithm=' + algorithm +
+                '&X-Amz-Credential=' + encodeURIComponent(this.awsAccessKeyId + '/' + credentialScope) +
+                '&X-Amz-Date=' + datetime +
+                '&X-Amz-SignedHeaders=host';
+              const canonicalHeaders = 'host:' + this.mqttEndpoint + '\n';
+              const payloadHash = AWS.util.crypto.sha256('', 'hex')
+              const canonicalRequest = method + '\n' + uri + '\n' + canonicalQuerystring + '\n' + canonicalHeaders + '\nhost\n' + payloadHash;
+
+              // signs the request
+              const stringToSign = algorithm + '\n' + datetime + '\n' + credentialScope + '\n' + AWS.util.crypto.sha256(canonicalRequest, 'hex');
+              const signingKey = SigV4Utils.getSignatureKey(this.awsSecretAccessKey, date, this.awsRegion, service);
+              const signature = AWS.util.crypto.hmac(signingKey, stringToSign, 'hex');
+
+              // adds the signing information to the request
+              const queryString = canonicalQuerystring + '&X-Amz-Signature=' + signature;
+
+              // forms the URL
+              const requestUrl = protocol + '://' + this.mqttEndpoint + uri + '?' + queryString;
+
+              // connects to the MQTT broker
+              const mqttClient = new Paho.MQTT.Client(requestUrl, 'home-monitor');
+              console.log('connecting: ' + requestUrl);
+              mqttClient.connect({
+                useSSL: true,
+                timeout: 3,
+                mqttVersion: 4,
+                onSuccess: function () {
+                  console.log('connection succeeded');
+                  // subscribes the topic
+                  subscribeTopic();
+                },
+                onFailure: function (_, code, message) {
+                  console.error('connection failed: ' + code + ' ' + message);
+                }
+              });
+
+              function subscribeTopic() {
+                console.log('subscribing: ' + self.topic);
+                mqttClient.subscribe(self.topic, {
+                  onSuccess: function () {
+                    console.log('subscription succeeded');
+                    self.lastMessage = 'waiting for the first message';
+                    // registers a message handler
+                    mqttClient.onMessageArrived = handleMessage;
+                  },
+                  onFailure: function (_, code, message) {
+                    console.error('subscription failed: ' + code + ' ' + message);
+                  }
+                });
+              }
+
+              function handleMessage(message) {
+                self.lastMessage = message.payloadString;
+              }
+            }
+          }
+        });
+      })
+    </script>
+  </head>
+  <body>
+    <div id='main' class='container'>
+      <h1>MQTT over WebSocket</h1>
+      <form v-on:submit.prevent='connectToMQTTBroker'>
+        <div class='form-group'>
+          <label for='mqtt-endpoint'>MQTT Endpoint</label>
+          <input
+              id='mqtt-endpoint'
+              type='text'
+              class='form-control'
+              v-model='mqttEndpoint'
+              placeholder='Enter MQTT Endpoint'>
+        </div>
+        <div class='form-group'>
+          <label for='aws-access-key-id'>AWS Access Key ID</label>
+          <input
+              id='aws-access-key-id'
+              type='text'
+              class='form-control'
+              v-model='awsAccessKeyId'
+              placeholder='Enter AWS Access Key ID'>
+        </div>
+        <div class='form-group'>
+          <label for='aws-secret-access-key'>AWS Secret Access Key</label>
+          <input
+              id='aws-secret-access-key'
+              type='text'
+              class='form-control'
+              v-model='awsSecretAccessKey'
+              placeholder='Enter AWS Secret Access Key'>
+        </div>
+        <div class='form-group'>
+          <label for='aws-region'>AWS Region</label>
+          <input
+              id='aws-region'
+              type='text'
+              class='form-control'
+              v-model='awsRegion'
+              placeholder='Enter AWS Region'>
+        </div>
+        <input type='submit' class='btn btn-primary'>
+      </form>
+      <div>
+        <p>Last Message: {{ lastMessage }}</p>
+      </div>
+    </div>
+  </body>
+</html>
