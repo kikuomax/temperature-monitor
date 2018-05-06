@@ -428,18 +428,14 @@ mosquitto_sub -h Pittsburgh.local -p 8883 -t monitor/temperature-and-humidity --
 
 ## AWS IoT
 
-- Somehow publish messages to AWS IoT
-- Somehow subscribe messages from AWS IoT on a browser
+To scale my service, I decided to migrate to [AWS IoT](https://aws.amazon.com/iot/).
 
-Hints
-- [MQTT over WebSocket](https://docs.aws.amazon.com/iot/latest/developerguide/protocols.html)
-    - [AWS Signature Version 4](https://docs.aws.amazon.com/general/latest/gr//sigv4_signing.html)
-
-First, replace the MQTT broker with the equivalent of AWS (Message broker).
+First, I replaced the MQTT broker with the equivalent of AWS (AWS Message Broker).
+Then I implemented a Web page subscribing messages via MQTT over WebSocket.
 
 ### Creating things
 
-To access the AWS message broker, you have to [create a thing](https://docs.aws.amazon.com/iot/latest/developerguide/register-device.html) first.
+To access the AWS Message Broker, I had to [create a thing](https://docs.aws.amazon.com/iot/latest/developerguide/register-device.html) first.
 
 #### Creating a thing representing the Raspberry Pi
 
@@ -447,7 +443,7 @@ I took the following steps,
 
 1. Create a thing (`temperature-sensor-1`)
 
-2. Create certificates for `temperature-sensor-1`
+2. Create certificates for the thing `temperature-sensor-1`
 
     1. Download the following files
         - `XYZ-certificate.pem.crt`
@@ -482,7 +478,7 @@ I took the following steps,
 
 1. Create a thing (`home-monitor`)
 
-2. Create certificates for `home-monitor`
+2. Create certificates for the thing `home-monitor`
 
     Download the following files,
     - `XYZ-certificate.pem.crt`
@@ -517,9 +513,9 @@ I took the following steps,
 
 **NOTE: I could not subscribe the topic `home/temperature-and-humidity` without `iot:Receive` allowed.**
 
-### Publishing messages to the AWS message broker
+### Publishing messages to the AWS Message Broker
 
-Because I already introduced an MQTT broker in the previous section, it was very straight forward to publish messages to the AWS message broker.
+Because I already introduced an MQTT broker in the previous section, it was very straight forward to publish messages to the AWS Message Broker.
 
 I added the following changes to [`src/DHT22_mqtt_crt_both.py`](src/DHT22_mqtt_crt_both.py) and saved it as [`src/DHT22_aws_iot.py`](src/DHT22_aws_iot.py).
 
@@ -531,7 +527,7 @@ I added the following changes to [`src/DHT22_mqtt_crt_both.py`](src/DHT22_mqtt_c
   topic_to_publish = 'home/temperature-and-humidity'
   ```
 
-- TLS parameters for the AWS message broker
+- TLS parameters for the AWS Message Broker
   ```python
   mqtt_client.tls_set(
       ca_certs='/home/pi/projects/temperature-monitor/aws-iot/root-ca.pem',
@@ -548,7 +544,7 @@ I added the following changes to [`src/DHT22_mqtt_crt_both.py`](src/DHT22_mqtt_c
 
 You may have noticed that the host name has to be specified to the environment variable `MQTT_HOST_NAME`.
 
-To get my AWS message broker name ([endpoint](https://docs.aws.amazon.com/cli/latest/reference/iot/describe-endpoint.html)), I ran the following command (`--profile kikuo-jp` is supplied to provide my credential),
+To get my AWS Message Broker name ([endpoint](https://docs.aws.amazon.com/cli/latest/reference/iot/describe-endpoint.html)), I ran the following command (`--profile kikuo-jp` is supplied to provide my credential),
 
 ```shell
 aws iot --profile kikuo-jp describe-endpoint
@@ -574,12 +570,37 @@ Then I ran [`src/DHT22_aws_iot.py`](src/DHT22_aws_iot.py)
 python src/DHT22_aws_iot.py
 ```
 
-### Subscribing messages from the AWS message broker
+### Subscribing messages from the AWS Message Broker
 
-To subscribe messages from the AWS message broker, I just replaced certificates of the previous `mosquitto_sub` command with those for the AWS message broker (see below).
+To subscribe messages from the AWS Message Broker, I just replaced certificates of the previous `mosquitto_sub` command with those for the AWS message broker (see below).
 
 ```shell
 mosquitto_sub -h $MQTT_HOST_NAME -p 8883 -t 'home/temperature-and-humidity' --cafile root-ca.pem --cert mqtt-subscriber-1.pem.crt --key mqtt-subscriber-1.private.key
 ```
 
 As I mentioned above, I had to allow the thing `home-monitor` the action `iot:Receive` in addition to the actions `iot:Connect` and `iot:Subscribe`.
+
+### Subscribing messages via MQTT over WebSocket
+
+I copied sample code from [here](https://docs.aws.amazon.com/iot/latest/developerguide/protocols.html), and saved them in [`docs/index.html`](docs/index.html) and [`docs/assets/js/SigV4Utils.js`](docs/assets/js/SigV4Utils.js).
+
+I downloaded a custom AWS SDK for browser by taking the following steps,
+1. Go to the [SDK page](https://aws.amazon.com/sdk-for-browser/)
+2. Click on "Customize your SDK build"
+3. Select only "AWS Iot"
+4. Click on "Build"
+
+I also downloaded [Eclipse Paho JavaScript Client](https://www.eclipse.org/paho/clients/js/).
+
+Additionally, I downloaded the following libraries for presentation,
+- [Vue.js](https://vuejs.org)
+- [Bootstrap](http://getbootstrap.com)
+- [jQuery](http://jquery.com)
+- [Popper.js](https://popper.js.org) (required by Bootstrap but maybe unnecessary)
+
+#### SecurityError on Safari
+
+I got a `SecurityError` telling me "The operation is insecure" when Eclipse Paho accesses `localStorage` on Safari (Chrome was OK).
+
+I followed a workaround suggested [here](https://forums.developer.apple.com/thread/87778), turning off the local file restriction of Safari, and I could avoid the error.
+NOTE: I had to reload the page after turning off the local file restriction feature.
