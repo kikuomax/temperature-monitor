@@ -628,4 +628,4 @@ NOTE: I had to reload the page after turning off the local file restriction feat
 
 ### GitHub Pages
 
-The contents of [`docs`](docs) are now hosted at the [GitHub Pages](https://kikuomax.github.io/temperature-monitor/) (no MQTT endpoint and credentials are supplied).
+The contents of [`docs`](docs) are now hosted at the [GitHub Pages](https://kikuomax.github.io/temperature-monitor/) (no MQTT endpoint and credentials are supplied but it should work with any AWS account).
