@@ -69,7 +69,7 @@
               console.log('connecting: ' + requestUrl);
               mqttClient.connect({
                 useSSL: true,
-                timeout: 3,
+                timeout: 10,
                 mqttVersion: 4,
                 onSuccess: function () {
                   console.log('connection succeeded');
