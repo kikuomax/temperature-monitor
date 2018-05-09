@@ -29,7 +29,7 @@
             lastDatetime: '',
             lastTemperature: 0,
             lastHumidity: 0,
-            debugCounter: 0
+            connectionStatus: 'not connected'
           },
           methods: {
             connectToMQTTBroker: function () {
@@ -66,6 +66,10 @@
 
               // connects to the MQTT broker
               const mqttClient = new Paho.MQTT.Client(requestUrl, 'home-monitor');
+              mqttClient.onConnectionLost = function (code, message) {
+                console.error(`connection lost: ${code} ${message}`);
+                self.connectionStatus = 'connection lost';
+              };
               console.log('connecting: ' + requestUrl);
               mqttClient.connect({
                 useSSL: true,
@@ -73,11 +77,14 @@
                 mqttVersion: 4,
                 onSuccess: function () {
                   console.log('connection succeeded');
+                  self.connectionStatus = 'connected';
                   // subscribes the topic
                   subscribeTopic();
                 },
                 onFailure: function (_, code, message) {
-                  console.error('connection failed: ' + code + ' ' + message);
+                  console.error(`connection failed: ${code} ${message}`);
+                  self.connectionStatus =
+                    `connection failed: ${code} ${message}`;
                 }
               });
 
@@ -86,12 +93,14 @@
                 mqttClient.subscribe(self.topic, {
                   onSuccess: function () {
                     console.log('subscription succeeded');
-                    self.lastMessage = 'waiting for the first message';
+                    self.connectionStatus = 'waiting for the first message';
                     // registers a message handler
                     mqttClient.onMessageArrived = handleMessage;
                   },
                   onFailure: function (_, code, message) {
-                    console.error('subscription failed: ' + code + ' ' + message);
+                    console.error(`subscription failed: ${code} ${message}`);
+                    self.connectionStatus =
+                      `subscription failed: ${code} ${message}`;
                   }
                 });
               }
@@ -101,13 +110,11 @@
                 self.lastDatetime = payload.datetime;
                 self.lastTemperature = payload.temperature;
                 self.lastHumidity = payload.humidity;
+                self.connectionStatus = 'received message';
               }
             }
           }
         });
-        window.setInterval(function () {
-          ++model.debugCounter;
-        }, 1000);
       })
     </script>
   </head>
@@ -119,7 +126,7 @@
         <p>Humidity: {{ lastHumidity.toFixed(1) }}%</p>
         <p>at {{ lastDatetime }}</p>
       </div>
-      <div><p>Debug Counter: {{ debugCounter }}</p></div>
+      <div><p>Status: {{ connectionStatus }}</p></div>
       <form v-on:submit.prevent='connectToMQTTBroker'>
         <h2>AWS Message Broker Subscription</h2>
         <div class='form-group'>
