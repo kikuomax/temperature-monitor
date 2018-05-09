@@ -28,7 +28,8 @@
             awsRegion: '',
             lastDatetime: '',
             lastTemperature: 0,
-            lastHumidity: 0
+            lastHumidity: 0,
+            debugCounter: 0
           },
           methods: {
             connectToMQTTBroker: function () {
@@ -100,11 +101,13 @@
                 self.lastDatetime = payload.datetime;
                 self.lastTemperature = payload.temperature;
                 self.lastHumidity = payload.humidity;
-                alert('message handled');
               }
             }
           }
         });
+        window.setInterval(function () {
+          ++model.debugCounter;
+        }, 1000);
       })
     </script>
   </head>
@@ -116,6 +119,7 @@
         <p>Humidity: {{ lastHumidity.toFixed(1) }}%</p>
         <p>at {{ lastDatetime }}</p>
       </div>
+      <div><p>Debug Counter: {{ debugCounter }}</p></div>
       <form v-on:submit.prevent='connectToMQTTBroker'>
         <h2>AWS Message Broker Subscription</h2>
         <div class='form-group'>
