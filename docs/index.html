@@ -26,6 +26,7 @@
             awsAccessKeyId: '',
             awsSecretAccessKey: '',
             awsRegion: '',
+            clientId: 'home-monitor',
             lastDatetime: '',
             lastTemperature: 0,
             lastHumidity: 0,
@@ -66,7 +67,7 @@
               const requestUrl = protocol + '://' + this.mqttEndpoint + uri + '?' + queryString;
 
               // connects to the MQTT broker
-              const mqttClient = new Paho.MQTT.Client(requestUrl, 'home-monitor');
+              const mqttClient = new Paho.MQTT.Client(requestUrl, self.clientId);
               mqttClient.onConnectionLost = function (code, message) {
                 console.error(`connection lost: ${code} ${message}`);
                 self.connectionStatus = 'connection lost';
@@ -169,6 +170,15 @@
               class='form-control'
               v-model='awsRegion'
               placeholder='Enter AWS Region'>
+        </div>
+        <div class='form-group'>
+          <label for='client-id'>Client ID</label>
+          <input
+              id='client-id'
+              type='text'
+              class='form-control'
+              v-model='clientId'
+              placeholder='Enter Client ID'>
         </div>
         <input type='submit' class='btn btn-primary' value='Subscribe'>
       </form>
