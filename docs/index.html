@@ -29,6 +29,7 @@
             lastDatetime: '',
             lastTemperature: 0,
             lastHumidity: 0,
+            messageNumber: 0,
             connectionStatus: 'not connected'
           },
           methods: {
@@ -110,6 +111,7 @@
                 self.lastDatetime = payload.datetime;
                 self.lastTemperature = payload.temperature;
                 self.lastHumidity = payload.humidity;
+                ++self.messageNumber;
                 self.connectionStatus = 'received message';
               }
             }
@@ -126,7 +128,10 @@
         <p>Humidity: {{ lastHumidity.toFixed(1) }}%</p>
         <p>at {{ lastDatetime }}</p>
       </div>
-      <div><p>Status: {{ connectionStatus }}</p></div>
+      <div>
+        <p>Message #: {{ messageNumber }}</p>
+        <p>Status: {{ connectionStatus }}</p>
+      </div>
       <form v-on:submit.prevent='connectToMQTTBroker'>
         <h2>AWS Message Broker Subscription</h2>
         <div class='form-group'>
