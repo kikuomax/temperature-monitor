@@ -1621,12 +1621,13 @@ var PahoMQTT = (function (global) {
 	ClientImpl.prototype._trace = function () {
 		// Pass trace message back to client's callback function
 		if (this.traceFunction) {
-			for (var i in arguments)
+			const args = Array.prototype.slice.call(arguments);
+			for (var i in args)
 			{
-				if (typeof arguments[i] !== "undefined")
-					arguments.splice(i, 1, JSON.stringify(arguments[i]));
+				if (typeof args[i] !== "undefined")
+					args.splice(i, 1, JSON.stringify(args[i]));
 			}
-			var record = Array.prototype.slice.call(arguments).join("");
+			var record = args.join("");
 			this.traceFunction ({severity: "Debug", message: record	});
 		}
 
