@@ -70,6 +70,13 @@
 
               // connects to the MQTT broker
               const mqttClient = new Paho.MQTT.Client(requestUrl, self.clientId);
+              mqttClient.onConnected = function (reconnect) {
+                if (reconnect) {
+                  self.connectionStatus = 'reconnected';
+                } else {
+                  self.connectionStatus = 'connected';
+                }
+              };
               mqttClient.onConnectionLost = function (code, message) {
                 console.error(`connection lost: ${code} ${message}`);
                 self.connectionStatus = 'connection lost';
@@ -84,6 +91,7 @@
                 useSSL: true,
                 timeout: 10,
                 mqttVersion: 4,
+                reconnect: true,
                 onSuccess: function () {
                   console.log('connection succeeded');
                   self.connectionStatus = 'connected';
