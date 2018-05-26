@@ -90,6 +90,7 @@
               mqttClient.connect({
                 useSSL: true,
                 timeout: 10,
+                keepAliveInterval: 300,  // 5 minutes
                 mqttVersion: 4,
                 reconnect: true,
                 onSuccess: function () {
