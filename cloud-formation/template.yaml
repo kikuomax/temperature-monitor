@@ -1,0 +1,65 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: 'IoT Temperature Monitor'
+
+Parameters:
+  TemperatureSensor1CSR:
+    Description: 'Certificate Signing Request of the temperature seonsor 1'
+    Type: 'String'
+
+Resources:
+  # allocates a temperature sensor
+  TemperatureSensor1:
+    Type: 'AWS::IoT::Thing'
+    Properties:
+      AttributePayload:
+        Attributes:
+          location: home
+
+  # generates a certificate for the temperature sensor
+  TemperatureSensor1Certificate:
+    Type: 'AWS::IoT::Certificate'
+    Properties:
+      CertificateSigningRequest: !Ref TemperatureSensor1CSR
+      Status: INACTIVE
+
+  # attaches the certificate to the temperature sensor
+  TemperatureSensor1ThingPrincipal:
+    Type: 'AWS::IoT::ThingPrincipalAttachment'
+    Properties:
+      Principal: !GetAtt TemperatureSensor1Certificate.Arn
+      ThingName: !Ref TemperatureSensor1
+
+  # declares the policy for the certificate
+  TemperatureSensor1Policy:
+    Type: 'AWS::IoT::Policy'
+    Properties:
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: 'Allow'
+            Action:
+              - 'iot:Connect'
+            Resource:
+              - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:client/*'
+          - Effect: 'Allow'
+            Action:
+              - 'iot:Publish'
+            Resource:
+              - !Sub 'arn:aws:iot:${AWS::Region}:${AWS::AccountId}:topic/home/temperature-and-humidity'
+
+  # attaches the policy to the certificate
+  TemperatureSensor1PolicyPrincipal:
+    Type: 'AWS::IoT::PolicyPrincipalAttachment'
+    Properties:
+      Principal: !GetAtt TemperatureSensor1Certificate.Arn
+      PolicyName: !Ref TemperatureSensor1Policy
+
+Outputs:
+  TemperatureSensor1CertificateArn:
+    Description: 'ARN of the certificate of a temperature sensor 1'
+    Value: !GetAtt TemperatureSensor1Certificate.Arn
+
+  TemperatureSensor1Name:
+    Description: 'ARN of the temperature sensor 1'
+    Value: !Ref TemperatureSensor1
+
